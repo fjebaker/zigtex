@@ -1,0 +1,14 @@
+.{
+    .name = "microtex-zig",
+    .version = "0.0.0",
+    .dependencies = .{
+        .microtex = .{
+            .path = "../MicroTeX",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
