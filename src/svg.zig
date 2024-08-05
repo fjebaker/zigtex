@@ -7,12 +7,24 @@ pub const Svg = struct {
         name: []const u8,
         id: usize,
         attr: AttrMap,
+        style: AttrMap,
         path: std.ArrayList(u8),
 
         pub fn write(self: *const Tag, writer: anytype) !void {
             try writer.print("<{s}", .{self.name});
             if (self.path.items.len > 0) {
                 try writer.print(" d=\"{s}\"", .{self.path.items});
+            }
+            if (self.style.count() > 0) {
+                try writer.writeAll(" style=\"");
+                var itt = self.style.iterator();
+                while (itt.next()) |item| {
+                    try writer.print(
+                        " {s}:{s};",
+                        .{ item.key_ptr.*, item.value_ptr.* },
+                    );
+                }
+                try writer.writeAll("\"");
             }
             var itt = self.attr.iterator();
             while (itt.next()) |item| {
@@ -77,6 +89,7 @@ pub const Svg = struct {
         ptr.name = name;
         ptr.id = id;
         ptr.attr = AttrMap.init(self.arena.allocator());
+        ptr.style = AttrMap.init(self.arena.allocator());
         ptr.path = std.ArrayList(u8).init(self.arena.allocator());
         return ptr;
     }
@@ -156,23 +169,11 @@ pub const Svg = struct {
     }
 
     pub fn drawLine(self: *Svg, x1: f32, y1: f32, x2: f32, y2: f32) !void {
-        const ptr = try self.newTag("line", 0);
+        const ptr = try self.newTag("path", 0);
         const alloc = self.arena.allocator();
-        try ptr.attr.put(
-            "x1",
-            try std.fmt.allocPrint(alloc, "{d}", .{x1 * self.sx}),
-        );
-        try ptr.attr.put(
-            "y1",
-            try std.fmt.allocPrint(alloc, "{d}", .{y1 * self.sy}),
-        );
-        try ptr.attr.put(
-            "x2",
-            try std.fmt.allocPrint(alloc, "{d}", .{x2 * self.sx}),
-        );
-        try ptr.attr.put(
-            "y2",
-            try std.fmt.allocPrint(alloc, "{d}", .{y2 * self.sy}),
+        try ptr.appendPath(
+            "M {d} {d} L {d} {d}",
+            .{ x1 * self.sx, y1 * self.sy, x2 * self.sx, y2 * self.sy },
         );
         try ptr.attr.put("stroke", try alloc.dupe(u8, self.color));
         try ptr.attr.put(

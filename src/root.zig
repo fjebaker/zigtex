@@ -47,7 +47,7 @@ pub const TexSvgRender = struct {
         full_header: bool = true,
         class: ?[]const u8 = null,
         /// RBGA
-        default_color: []const u8 = "#3b3b3bff",
+        default_color: []const u8 = "#3b3b3b",
     };
 
     pub fn parseRender(
@@ -94,7 +94,7 @@ pub const TexSvgRender = struct {
                     if (c == 0) {
                         s.setColor(opts.default_color);
                     } else {
-                        s.setColor(try std.fmt.bufPrint(&color, "#{x:0>8}", .{c}));
+                        s.setColor(try std.fmt.bufPrint(&color, "#{x:0>6}", .{c >> 8}));
                     }
                 },
                 .translate => |i| s.translate(i.x, i.y),
