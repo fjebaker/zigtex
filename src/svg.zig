@@ -46,7 +46,7 @@ pub const Svg = struct {
     tags: std.ArrayList(Tag),
 
     state: State = .none,
-    color: u32 = 0x3b3b3bff,
+    color: []const u8 = "#3b3b3bff",
     // translation
     tx: f32 = 0,
     ty: f32 = 0,
@@ -107,13 +107,8 @@ pub const Svg = struct {
         return new_y;
     }
 
-    pub fn setColor(self: *Svg, r: u8, g: u8, b: u8, alpha: u8) void {
-        const color =
-            (@as(u32, @intCast(r)) << 24) +
-            (@as(u32, @intCast(g)) << 16) +
-            (@as(u32, @intCast(b)) << 8) +
-            (alpha);
-        self.color = color;
+    pub fn setColor(self: *Svg, string: []const u8) void {
+        self.color = string;
     }
 
     pub fn moveTo(self: *Svg, x: f32, y: f32) !void {
@@ -158,12 +153,7 @@ pub const Svg = struct {
     }
 
     pub fn fillPath(self: *Svg) !void {
-        const color = try std.fmt.allocPrint(
-            self.arena.allocator(),
-            "#{x:0>8}",
-            .{self.color},
-        );
-        try self.current().attr.put("fill", color);
+        try self.current().attr.put("fill", self.color);
     }
 
     pub fn translate(self: *Svg, x: f32, y: f32) void {

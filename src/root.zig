@@ -46,6 +46,8 @@ pub const TexSvgRender = struct {
         y_pad: u32 = 3,
         full_header: bool = true,
         class: ?[]const u8 = null,
+        /// RBGA
+        default_color: []const u8 = "#3b3b3bff",
     };
 
     pub fn parseRender(
@@ -72,6 +74,7 @@ pub const TexSvgRender = struct {
             .line_space = @floatFromInt(opts.spacing),
             .override_syle = opts.style == null,
             .style = style,
+            .color = 0,
         });
         defer r.deinit();
 
@@ -82,13 +85,17 @@ pub const TexSvgRender = struct {
 
         s.x_pad = @floatFromInt(opts.x_pad);
         s.y_pad = @floatFromInt(opts.y_pad);
+        s.setColor(opts.default_color);
 
+        var color: [9]u8 = undefined;
         while (data.next()) |cmd| {
             switch (cmd) {
                 .set_color => |c| {
-                    const C = packed struct { x1: u8, x2: u8, x3: u8, x4: u8 };
-                    const a: C = @bitCast(c);
-                    s.setColor(a.x1, a.x2, a.x3, a.x4);
+                    if (c == 0) {
+                        s.setColor(opts.default_color);
+                    } else {
+                        s.setColor(try std.fmt.bufPrint(&color, "#{x:0>8}", .{c}));
+                    }
                 },
                 .translate => |i| s.translate(i.x, i.y),
                 .scale => |i| s.scale(i.x, i.y),

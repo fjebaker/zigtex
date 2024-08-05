@@ -130,7 +130,8 @@ pub const MicroTeX = struct {
         width: u32 = 0,
         text_size: f32 = 20,
         line_space: f32 = 20 / 3,
-        color: u32 = 0xff3b3b3b,
+        /// 0xAARRGGBB
+        color: u32,
         fill_width: bool = false,
         override_syle: bool = true,
         style: u32 = 0,
