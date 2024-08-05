@@ -178,42 +178,65 @@ pub const Svg = struct {
 
     pub const WriteOptions = struct {
         svg_content: ?[]const u8 = null,
+        full_header: bool = true,
+        class: ?[]const u8 = null,
     };
 
     pub fn write(self: *const Svg, writer: anytype, opts: WriteOptions) !void {
-        try self.writeHeader(writer);
+        try self.writeHeader(writer, opts.class, opts.full_header);
         try writer.writeByte('\n');
 
         const indent: usize = 1;
+        if (opts.svg_content) |content| {
+            try writer.writeByteNTimes(' ', indent * 2);
+            try writer.print(
+                "<desc>{s}</desc>\n",
+                .{std.mem.trim(u8, content, "\n\t ")},
+            );
+        }
+
         for (self.tags.items) |tag| {
             try writer.writeByteNTimes(' ', indent * 2);
             try tag.write(writer);
             try writer.writeByte('\n');
         }
 
-        try self.writeFooter(writer, opts.svg_content);
+        try self.writeFooter(writer);
     }
 
-    fn writeHeader(self: *const Svg, writer: anytype) !void {
+    fn writeHeader(
+        self: *const Svg,
+        writer: anytype,
+        class: ?[]const u8,
+        full_header: bool,
+    ) !void {
         if (self.x_min >= self.x_max) return error.BadViewbox;
         if (self.y_min >= self.y_max) return error.BadViewbox;
+
+        if (full_header) {
+            try writer.writeAll(
+                \\<?xml version="1.0" encoding="UTF-8"?>
+                \\  <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+            );
+            try writer.writeAll("\n  ");
+        }
+        const xlow = self.x_min - self.x_pad;
+        const ylow = self.y_min - self.x_pad;
+        const xhigh = self.x_max + 2 * self.x_pad;
+        const yhigh = self.y_max + 2 * self.y_pad;
+
         try writer.print(
-            \\<?xml version="1.0" encoding="UTF-8"?>
-            \\  <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-            \\  <svg xmlns="http://www.w3.org/2000/svg" viewBox="{d} {d} {d} {d}">
+            \\<svg xmlns="http://www.w3.org/2000/svg" viewBox="{d} {d} {d} {d}" width="{d}" height="{d}"
         , .{
-            self.x_min - self.x_pad,
-            self.y_min - self.x_pad,
-            self.x_max + 2 * self.x_pad,
-            self.y_max + 2 * self.y_pad,
+            xlow, ylow, xhigh, yhigh, xhigh - xlow, yhigh - ylow,
         });
+        if (class) |cls| {
+            try writer.print(" class=\"{s}\"", .{cls});
+        }
+        try writer.writeAll(">");
     }
 
-    fn writeFooter(_: *const Svg, writer: anytype, content: ?[]const u8) !void {
-        if (content) |c| {
-            try writer.print("  {s}\n</svg>", .{c});
-        } else {
-            try writer.writeAll("</svg>");
-        }
+    fn writeFooter(_: *const Svg, writer: anytype) !void {
+        try writer.writeAll("</svg>");
     }
 };

@@ -44,6 +44,8 @@ pub const TexSvgRender = struct {
         style: ?enum { display, in_line } = null,
         x_pad: u32 = 3,
         y_pad: u32 = 3,
+        full_header: bool = true,
+        class: ?[]const u8 = null,
     };
 
     pub fn parseRender(
@@ -103,7 +105,11 @@ pub const TexSvgRender = struct {
         }
         var buf = std.ArrayList(u8).init(allocator);
         defer buf.deinit();
-        try s.write(buf.writer(), .{ .svg_content = tex });
+        try s.write(buf.writer(), .{
+            .full_header = opts.full_header,
+            .svg_content = tex,
+            .class = opts.class,
+        });
         return buf.toOwnedSlice();
     }
 };
