@@ -47,6 +47,9 @@ pub const Svg = struct {
 
     state: State = .none,
     color: []const u8 = "#3b3b3bff",
+    stroke: struct {
+        width: f32 = 1,
+    } = .{},
     // translation
     tx: f32 = 0,
     ty: f32 = 0,
@@ -152,8 +155,39 @@ pub const Svg = struct {
         try self.current().appendPath("Z", .{});
     }
 
+    pub fn drawLine(self: *Svg, x1: f32, y1: f32, x2: f32, y2: f32) !void {
+        const ptr = try self.newTag("line", 0);
+        const alloc = self.arena.allocator();
+        try ptr.attr.put(
+            "x1",
+            try std.fmt.allocPrint(alloc, "{d}", .{x1 * self.sx}),
+        );
+        try ptr.attr.put(
+            "y1",
+            try std.fmt.allocPrint(alloc, "{d}", .{y1 * self.sy}),
+        );
+        try ptr.attr.put(
+            "x2",
+            try std.fmt.allocPrint(alloc, "{d}", .{x2 * self.sx}),
+        );
+        try ptr.attr.put(
+            "y2",
+            try std.fmt.allocPrint(alloc, "{d}", .{y2 * self.sy}),
+        );
+        try ptr.attr.put("stroke", try alloc.dupe(u8, self.color));
+        try ptr.attr.put(
+            "stroke-width",
+            try std.fmt.allocPrint(alloc, "{d}", .{self.stroke.width * self.sx}),
+        );
+    }
+
+    pub fn setStroke(self: *Svg, width: f32) !void {
+        self.stroke.width = width;
+    }
+
     pub fn fillPath(self: *Svg) !void {
-        try self.current().attr.put("fill", self.color);
+        const alloc = self.arena.allocator();
+        try self.current().attr.put("fill", try alloc.dupe(u8, self.color));
     }
 
     pub fn translate(self: *Svg, x: f32, y: f32) void {

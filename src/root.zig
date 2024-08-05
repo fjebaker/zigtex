@@ -105,6 +105,8 @@ pub const TexSvgRender = struct {
                 .begin_path => |id| try s.beginPath(@intCast(id)),
                 .close_path => try s.closePath(),
                 .fill_path => try s.fillPath(),
+                .draw_line => |i| try s.drawLine(i.x1, i.y1, i.x2, i.y2),
+                .set_stroke => |i| try s.setStroke(i.width),
                 else => {
                     std.log.default.warn("Unhandled opcopde: {any}", .{cmd});
                 },
