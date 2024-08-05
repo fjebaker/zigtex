@@ -127,6 +127,8 @@ pub const MicroTeX = struct {
         line_space: f32 = 20 / 3,
         color: u32 = 0xff3b3b3b,
         fill_width: bool = false,
+        override_syle: bool = true,
+        style: u32 = 0,
     };
 
     pub fn parseRender(
@@ -142,8 +144,8 @@ pub const MicroTeX = struct {
             opts.line_space,
             @intCast(opts.color),
             opts.fill_width,
-            false,
-            0,
+            opts.override_syle,
+            @intCast(opts.style),
         );
         if (ptr == null) return error.FailedToRender;
         return .{ .ptr = ptr };
@@ -184,8 +186,8 @@ pub const Render = struct {
         begin_path: i32,
         move_to: struct { x: f32, y: f32 },
         line_to: struct { x: f32, y: f32 },
-        cubic_to: struct { x: f32, y: f32, a1: f32, a2: f32, a3: f32, a4: f32 },
-        quad_to: struct { x: f32, y: f32, a1: f32, a2: f32 },
+        cubic_to: struct { x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32 },
+        quad_to: struct { x1: f32, y1: f32, x2: f32, y2: f32 },
         close_path: void,
         // returns the id
         fill_path: i32,
@@ -217,10 +219,6 @@ pub const Render = struct {
         data: []const u8,
         ptr: c.DrawingData,
 
-        // scales
-        sx: f32 = 1,
-        sy: f32 = 1,
-
         fn init(ptr: c.DrawingData) DrawingData {
             const len = getRawDrawingDataT(ptr, 0, u32);
             std.debug.print("LEN: {d}\n", .{len});
@@ -245,7 +243,10 @@ pub const Render = struct {
             return std.mem.bytesToValue(T, data);
         }
 
-        fn readOp(self: *DrawingData, comptime op: std.meta.Tag(Command)) Command {
+        fn readOp(
+            self: *DrawingData,
+            comptime op: std.meta.Tag(Command),
+        ) Command {
             const name = @tagName(op);
             const info = @typeInfo(Command).Union;
             const T = comptime b: {
@@ -275,18 +276,8 @@ pub const Render = struct {
         pub fn next(self: *DrawingData) ?Command {
             const opcode = self.getT(u8) orelse
                 return null;
-
             switch (opcode) {
-                6 => {
-                    const cmd: Command = .{ .scale = .{
-                        .x = self.getT(f32).?,
-                        .y = self.getT(f32).?,
-                    } };
-                    self.sx *= cmd.scale.x;
-                    self.sy *= cmd.scale.x;
-                    return cmd;
-                },
-                inline 0...5, 7...22 => |i| {
+                inline 0...22 => |i| {
                     const op: std.meta.Tag(Command) = @enumFromInt(i);
                     return self.readOp(op);
                 },
@@ -352,7 +343,7 @@ pub const FontContext = struct {
         const value = self.fontmap.get(id).?;
         _ = value;
         // TODO: would need a way of measuring how big this is going to be
-        bounds.setBounds(100, 50, -2);
+        bounds.setBounds(200, 100, 10);
     }
 
     fn releaseTextLayout(self: *FontContext, id: usize) void {
