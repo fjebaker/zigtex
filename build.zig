@@ -9,22 +9,28 @@ pub fn build(b: *std.Build) void {
         .{ .target = target },
     );
 
+    const mod = b.addModule("zigtex", .{
+        .root_source_file = b.path("src/root.zig"),
+        .optimize = optimize,
+        .target = target,
+    });
+    mod.linkLibrary(microtex_dep.artifact("microtex"));
+    mod.addAnonymousImport(
+        "@DEFAULT_FONT@",
+        .{ .root_source_file = b.path("./fonts/latinmodern-math.clm2") },
+    );
+
     const exe = b.addExecutable(.{
-        .name = "microtex-zig",
+        .name = "texample",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addAnonymousImport(
-        "@DEFAULT_FONT@",
-        .{ .root_source_file = b.path("./fonts/latinmodern-math.clm2") },
-    );
-    exe.linkLibrary(microtex_dep.artifact("microtex"));
-    b.installArtifact(exe);
+    exe.root_module.addImport("zigtex", mod);
 
+    const install_exe = b.addInstallArtifact(exe, .{});
     const run_cmd = b.addRunArtifact(exe);
-
-    run_cmd.step.dependOn(b.getInstallStep());
+    run_cmd.step.dependOn(&install_exe.step);
 
     if (b.args) |args| {
         run_cmd.addArgs(args);

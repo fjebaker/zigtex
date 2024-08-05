@@ -1,6 +1,6 @@
 .{
-    .name = "microtex-zig",
-    .version = "0.0.0",
+    .name = "zigtex",
+    .version = "0.1.0",
     .dependencies = .{
         .microtex = .{
             .url = "https://github.com/fjebaker/MicroTeX/archive/openmath.tar.gz",
@@ -11,5 +11,6 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "fonts",
     },
 }
