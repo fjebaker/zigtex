@@ -1,5 +1,5 @@
 const std = @import("std");
-const ztex = @import("root.zig");
+const ztex = @import("zigtex");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -11,7 +11,7 @@ pub fn main() !void {
 
     const tex =
         \\\begin{equation}
-        \\    \tilde{F}(\nu) = \int_0^\infty e^{-i \pi t \nu} f(t) \text{d}t
+        \\    \hat{F}(\nu) = \int_{-\infty}^\infty e^{-i 2\pi t \nu} f(t) \text{d}t
         \\\end{equation}
     ;
 

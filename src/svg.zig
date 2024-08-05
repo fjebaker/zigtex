@@ -176,7 +176,11 @@ pub const Svg = struct {
         self.sy *= y;
     }
 
-    pub fn write(self: *const Svg, writer: anytype) !void {
+    pub const WriteOptions = struct {
+        svg_content: ?[]const u8 = null,
+    };
+
+    pub fn write(self: *const Svg, writer: anytype, opts: WriteOptions) !void {
         try self.writeHeader(writer);
         try writer.writeByte('\n');
 
@@ -187,7 +191,7 @@ pub const Svg = struct {
             try writer.writeByte('\n');
         }
 
-        try self.writeFooter(writer);
+        try self.writeFooter(writer, opts.svg_content);
     }
 
     fn writeHeader(self: *const Svg, writer: anytype) !void {
@@ -205,7 +209,11 @@ pub const Svg = struct {
         });
     }
 
-    fn writeFooter(_: *const Svg, writer: anytype) !void {
-        try writer.writeAll("</svg>");
+    fn writeFooter(_: *const Svg, writer: anytype, content: ?[]const u8) !void {
+        if (content) |c| {
+            try writer.print("  {s}\n</svg>", .{c});
+        } else {
+            try writer.writeAll("</svg>");
+        }
     }
 };

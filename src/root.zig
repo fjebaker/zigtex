@@ -103,7 +103,7 @@ pub const TexSvgRender = struct {
         }
         var buf = std.ArrayList(u8).init(allocator);
         defer buf.deinit();
-        try s.write(buf.writer());
+        try s.write(buf.writer(), .{ .svg_content = tex });
         return buf.toOwnedSlice();
     }
 };
