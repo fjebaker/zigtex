@@ -1,113 +1,175 @@
 const std = @import("std");
-const c = @import("c.zig");
 
-fn checkReturn(code: c_uint) !void {
-    switch (code) {
-        c.TVG_RESULT_SUCCESS => {},
-        c.TVG_RESULT_UNKNOWN => return error.ThorvgUnknown,
-        c.TVG_RESULT_NOT_SUPPORTED => return error.ThorvgNotSupported,
-        else => {
-            std.log.default.err("thorvg error: {d}", .{code});
-            return error.ThorvgError;
-        },
-    }
-}
+pub const Svg = struct {
+    pub const State = enum {
+        none,
+        in_path,
+        path_done,
+    };
+    buffer: std.ArrayList(u8),
+    path: std.ArrayList(u8),
+    arena: std.heap.ArenaAllocator,
+    attr: std.StringHashMap([]const u8),
 
-pub fn init() !void {
-    const ret = c.tvg_engine_init(c.TVG_ENGINE_SW, 0);
-    try checkReturn(ret);
-}
+    color: u32 = 0,
+    state: State = .none,
+    // translation
+    tx: f32 = 0,
+    ty: f32 = 0,
+    // scaling
+    sx: f32 = 2,
+    sy: f32 = 2,
 
-pub fn deinit() void {
-    _ = c.tvg_engine_term(c.TVG_ENGINE_SW);
-}
-
-pub const Canvas = struct {
-    pub const Options = struct {};
-
-    ptr: ?*c.Tvg_Canvas,
-
-    pub fn init(opts: Options) Canvas {
-        _ = opts;
+    pub fn init(allocator: std.mem.Allocator) Svg {
         return .{
-            .ptr = c.tvg_swcanvas_create(),
+            .arena = std.heap.ArenaAllocator.init(allocator),
+            .attr = std.StringHashMap([]const u8).init(allocator),
+            .buffer = std.ArrayList(u8).init(allocator),
+            .path = std.ArrayList(u8).init(allocator),
         };
     }
 
-    pub fn deinit(self: *Canvas) void {
-        c.tvg_canvas_destroy(self.ptr);
+    pub fn deinit(self: *Svg) void {
+        self.buffer.deinit();
+        self.path.deinit();
+        self.attr.deinit();
+        self.arena.deinit();
+        self.* = undefined;
     }
 
-    pub fn sync(self: Canvas) !void {
-        try checkReturn(c.tvg_canvas_sync(self.ptr));
+    fn xfmX(self: *const Svg, x: f32) f32 {
+        return self.tx + (x * self.sx) + 5;
+    }
+    fn xfmY(self: *const Svg, y: f32) f32 {
+        return (self.ty + y) * self.sy + 20;
     }
 
-    pub fn draw(self: Canvas) !void {
-        try checkReturn(c.tvg_canvas_draw(self.ptr));
+    pub fn moveTo(self: *Svg, x: f32, y: f32) !void {
+        try self.path.writer().print("M{d} {d} ", .{
+            x,
+            y,
+        });
     }
 
-    pub fn push(self: Canvas, obj: anytype) !void {
-        if (!@hasDecl(@TypeOf(obj), "_Push") or !@TypeOf(obj)._Push) {
-            @compileError("Cannot save object of such type");
+    pub fn lineTo(self: *Svg, x: f32, y: f32) !void {
+        try self.path.writer().print("L{d} {d} ", .{
+            x,
+            y,
+        });
+    }
+
+    pub fn cubicTo(
+        self: *Svg,
+        dx1: f32,
+        dy1: f32,
+        dx2: f32,
+        dy2: f32,
+        x: f32,
+        y: f32,
+    ) !void {
+        try self.path.writer().print("C{d} {d}, {d} {d}, {d} {d} ", .{
+            dx1,
+            dy1,
+            dx2,
+            dy2,
+            x,
+            y,
+        });
+    }
+
+    fn writeAttr(self: *Svg) !void {
+        const writer = self.buffer.writer();
+        if (self.path.items.len > 0) {
+            try writer.print(" d=\"{s}\"", .{self.path.items});
         }
-        try checkReturn(c.tvg_canvas_push(self.ptr, obj.ptr));
-    }
-};
-
-pub const Scene = struct {
-    const _Save = true;
-    ptr: ?*c.Tvg_Paint,
-
-    pub fn init() Scene {
-        return .{ .ptr = c.tvg_scene_new() };
-    }
-
-    pub fn push(self: Scene, obj: anytype) !void {
-        if (!@hasDecl(@TypeOf(obj), "_Push") or !@TypeOf(obj)._Push) {
-            @compileError("Cannot save object of such type");
+        var itt = self.attr.iterator();
+        while (itt.next()) |item| {
+            try writer.print(
+                " {s}=\"{s}\"",
+                .{ item.key_ptr.*, item.value_ptr.* },
+            );
         }
-        try checkReturn(c.tvg_scene_push(self.ptr, obj.ptr));
-    }
-};
 
-pub const Shape = struct {
-    const _Push = true;
-    const _Save = true;
-
-    ptr: ?*c.Tvg_Paint,
-
-    pub fn init() Shape {
-        return .{ .ptr = c.tvg_shape_new() };
+        self.path.clearRetainingCapacity();
+        self.attr.clearRetainingCapacity();
     }
 
-    pub fn close(self: Shape) !void {
-        try checkReturn(c.tvg_shape_close(self.ptr));
-    }
-
-    pub fn move_to(self: Shape, x: f32, y: f32) !void {
-        try checkReturn(c.tvg_shape_move_to(self.ptr, x, y));
-    }
-
-    pub fn line_to(self: Shape, x: f32, y: f32) !void {
-        try checkReturn(c.tvg_shape_move_to(self.ptr, x, y));
-    }
-};
-
-pub const Saver = struct {
-    ptr: ?*c.Tvg_Saver,
-
-    pub fn init() Saver {
-        return .{ .ptr = c.tvg_saver_new() };
-    }
-
-    pub fn deinit(self: *Saver) void {
-        _ = c.tvg_saver_del(self.ptr);
-    }
-
-    pub fn save(self: Saver, obj: anytype, name: [:0]const u8) !void {
-        if (!@hasDecl(@TypeOf(obj), "_Save") or !@TypeOf(obj)._Save) {
-            @compileError("Cannot save object of such type");
+    pub fn beginPath(self: *Svg) !void {
+        switch (self.state) {
+            .none => {
+                try self.buffer.appendSlice("<path");
+                self.state = .in_path;
+            },
+            .path_done => {
+                try self.writeAttr();
+                try self.buffer.appendSlice("/>\n<path");
+                self.state = .in_path;
+            },
+            else => unreachable,
         }
-        try checkReturn(c.tvg_saver_save(self.ptr, obj.ptr, name.ptr, 100));
+    }
+
+    pub fn closePath(self: *Svg) !void {
+        switch (self.state) {
+            .path_done, .in_path => {
+                try self.path.appendSlice("Z ");
+                self.state = .path_done;
+            },
+            else => {},
+        }
+    }
+
+    pub fn fillPath(self: *Svg) !void {
+        switch (self.state) {
+            .path_done => {
+                try self.attr.put("fill", "black");
+            },
+            else => unreachable,
+        }
+    }
+
+    fn modAttr(
+        self: *Svg,
+        name: []const u8,
+        comptime fmt: []const u8,
+        args: anytype,
+    ) !void {
+        std.debug.print("name: {s} ++ {s}\n", .{ name, fmt });
+        const s = try std.fmt.allocPrint(
+            self.arena.allocator(),
+            fmt,
+            args,
+        );
+        if (self.attr.contains(name)) {
+            const ptr = self.attr.getPtr(name).?;
+            ptr.* = try std.mem.join(
+                self.arena.allocator(),
+                " ",
+                &.{ ptr.*, s },
+            );
+        } else {
+            try self.attr.put(name, s);
+        }
+    }
+
+    pub fn translate(self: *Svg, x: f32, y: f32) !void {
+        try self.modAttr("transform", "translate({d} {d})", .{ x, y });
+    }
+
+    pub fn scale(self: *Svg, x: f32, y: f32) !void {
+        try self.modAttr("transform", "scale({d} {d})", .{ x, y });
+    }
+
+    pub fn writeHeader(self: *Svg) !void {
+        try self.buffer.appendSlice(
+            \\<?xml version="1.0" encoding="UTF-8"?>
+            \\<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+            \\<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">
+        );
+    }
+
+    pub fn writeFooter(self: *Svg) !void {
+        try self.writeAttr();
+        try self.buffer.appendSlice("/>\n</svg>\n");
     }
 };
