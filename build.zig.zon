@@ -3,7 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .microtex = .{
-            .path = "../MicroTeX",
+            .url = "https://github.com/fjebaker/MicroTeX/archive/openmath.tar.gz",
+            .hash = "12209b16c547fc147f01193b8444c20196363d54efa0b0ecd13b510cf0c5cdf36707",
         },
     },
     .paths = .{

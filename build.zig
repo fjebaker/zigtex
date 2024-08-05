@@ -15,7 +15,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
+    exe.root_module.addAnonymousImport(
+        "@DEFAULT_FONT@",
+        .{ .root_source_file = b.path("./fonts/latinmodern-math.clm2") },
+    );
     exe.linkLibrary(microtex_dep.artifact("microtex"));
     b.installArtifact(exe);
 

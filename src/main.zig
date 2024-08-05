@@ -2,7 +2,7 @@ const std = @import("std");
 const microtex = @import("root.zig");
 const svg = @import("svg.zig");
 
-const CLM_PATH = "./latinmodern-math.clm2";
+const CLM_DATA = @embedFile("@DEFAULT_FONT@");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,7 +14,7 @@ pub fn main() !void {
 
     microtex.setRenderGlyphUsePath(true);
 
-    var mtex = try microtex.MicroTeX.init(allocator, CLM_PATH, &svg_context);
+    var mtex = try microtex.MicroTeX.init(allocator, CLM_DATA, &svg_context);
     defer mtex.deinit();
 
     // var render = try mtex.parseRender("\\int_0^\\infty e^{i \\pi t \\nu} f(t) \\text{d}\\nu", .{});
@@ -33,7 +33,6 @@ pub fn main() !void {
     try s.writeHeader();
 
     while (data.next()) |cmd| {
-        std.debug.print("-> {any}\n", .{cmd});
         switch (cmd) {
             .set_color => |c| {
                 const C = packed struct {
@@ -58,7 +57,7 @@ pub fn main() !void {
             .close_path => try s.closePath(),
             .fill_path => try s.fillPath(),
             else => {
-                std.debug.print("-> {any}\n", .{cmd});
+                std.log.default.warn("Unhandled opcopde: {any}", .{cmd});
             },
         }
     }
@@ -69,5 +68,4 @@ pub fn main() !void {
     defer f.close();
 
     try f.writeAll(s.buffer.items);
-    std.debug.print("\n{s}", .{s.buffer.items});
 }

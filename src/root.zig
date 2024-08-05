@@ -31,11 +31,22 @@ pub const MicroTeX = struct {
 
     var ctx: *anyopaque = undefined;
 
-    pub fn init(
+    pub fn initPath(
         allocator: std.mem.Allocator,
         clm_path: []const u8,
         context: anytype,
     ) !Self {
+        const stat = try std.fs.cwd().statFile(clm_path);
+        const content = try std.fs.cwd().readFileAlloc(
+            allocator,
+            clm_path,
+            stat.size,
+        );
+        defer allocator.free(content);
+        return try init(allocator, content, context);
+    }
+
+    pub fn init(allocator: std.mem.Allocator, clm_data: []const u8, context: anytype) !Self {
         if (c.microtex_isInited()) {
             return error.MicroTeXAlreadyInitialized;
         }
@@ -86,13 +97,6 @@ pub const MicroTeX = struct {
                 );
             }
         };
-        const stat = try std.fs.cwd().statFile(clm_path);
-        const content = try std.fs.cwd().readFileAlloc(
-            allocator,
-            clm_path,
-            stat.size,
-        );
-        errdefer allocator.free(content);
 
         // register the callback functions
         c.microtex_registerCallbacks(
@@ -102,6 +106,7 @@ pub const MicroTeX = struct {
             CallbackWrapper.isPathExists,
         );
 
+        const content = try allocator.dupe(u8, clm_data);
         const font_meta = c.microtex_init(content.len, content.ptr);
 
         const name = c.microtex_getFontName(font_meta);
@@ -221,7 +226,6 @@ pub const Render = struct {
 
         fn init(ptr: c.DrawingData) DrawingData {
             const len = getRawDrawingDataT(ptr, 0, u32);
-            std.debug.print("LEN: {d}\n", .{len});
             return .{
                 .ptr = ptr,
                 .data = getRawDrawingData(ptr, 0, len),
