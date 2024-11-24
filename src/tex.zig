@@ -51,7 +51,7 @@ pub const MicroTeX = struct {
             return error.MicroTeXAlreadyInitialized;
         }
 
-        const Ctx = @typeInfo(@TypeOf(context)).Pointer.child;
+        const Ctx = @typeInfo(@TypeOf(context)).pointer.child;
         ctx = context;
 
         const CallbackWrapper = struct {
@@ -253,7 +253,7 @@ pub const Render = struct {
             comptime op: std.meta.Tag(Command),
         ) Command {
             const name = @tagName(op);
-            const info = @typeInfo(Command).Union;
+            const info = @typeInfo(Command).@"union";
             const T = comptime b: {
                 for (info.fields) |field| {
                     if (std.mem.eql(u8, field.name, name)) {
@@ -265,12 +265,12 @@ pub const Render = struct {
 
             var cmd: T = undefined;
             switch (@typeInfo(T)) {
-                .Struct => {
-                    inline for (@typeInfo(T).Struct.fields) |field| {
+                .@"struct" => {
+                    inline for (@typeInfo(T).@"struct".fields) |field| {
                         @field(cmd, field.name) = self.getT(field.type).?;
                     }
                 },
-                .Int, .Float => {
+                .int, .float => {
                     cmd = self.getT(T).?;
                 },
                 else => {},
