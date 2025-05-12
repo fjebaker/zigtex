@@ -10,9 +10,7 @@ pub fn main() !void {
     defer render.deinit();
 
     const tex =
-        \\\begin{equation}
-        \\    \hat{F}(\nu) = \int_{-\infty}^\infty e^{-i 2\pi t \nu} f(t) \text{d}t
-        \\\end{equation}
+        \\\frac{\text{d}}{\text{d} t} \left( \frac{\partial L}{\partial \dot{q}} \right) = \frac{\partial L}{\partial q}.
     ;
 
     const output = try render.parseRender(allocator, tex, .{});
