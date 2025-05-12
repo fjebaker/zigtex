@@ -1,10 +1,11 @@
 .{
-    .name = "zigtex",
+    .name = .zigtex,
+    .fingerprint = 0x3c04f3e228832fde,
     .version = "0.1.0",
     .dependencies = .{
         .microtex = .{
             .url = "https://github.com/fjebaker/MicroTeX/archive/openmath.tar.gz",
-            .hash = "12209b16c547fc147f01193b8444c20196363d54efa0b0ecd13b510cf0c5cdf36707",
+            .hash = "N-V-__8AAKtzyQAE9SdYFrG_wy4uQPdZp1McRWsdddHbOmgD",
         },
     },
     .paths = .{
