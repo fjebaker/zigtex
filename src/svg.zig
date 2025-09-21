@@ -8,9 +8,9 @@ pub const Svg = struct {
         id: usize,
         attr: AttrMap,
         style: AttrMap,
-        path: std.ArrayList(u8),
+        path: std.ArrayList(u8) = .empty,
 
-        pub fn write(self: *const Tag, writer: anytype) !void {
+        pub fn write(self: *const Tag, writer: *std.Io.Writer) !void {
             try writer.print("<{s}", .{self.name});
             if (self.path.items.len > 0) {
                 try writer.print(" d=\"{s}\"", .{self.path.items});
@@ -41,10 +41,12 @@ pub const Svg = struct {
             comptime fmt: []const u8,
             args: anytype,
         ) !void {
+            const allocator = self.attr.allocator;
             if (self.path.items.len > 0) {
-                try self.path.append(' ');
+                try self.path.append(allocator, ' ');
             }
-            try self.path.writer().print(fmt, args);
+            var path_writer = self.path.writer(allocator).adaptToNewApi(&.{});
+            try path_writer.new_interface.print(fmt, args);
         }
     };
 
@@ -55,7 +57,8 @@ pub const Svg = struct {
     };
 
     arena: std.heap.ArenaAllocator,
-    tags: std.ArrayList(Tag),
+    allocator: std.mem.Allocator,
+    tags: std.ArrayList(Tag) = .empty,
 
     state: State = .none,
     color: []const u8 = "#3b3b3bff",
@@ -80,22 +83,24 @@ pub const Svg = struct {
     pub fn init(allocator: std.mem.Allocator) Svg {
         return .{
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .tags = std.ArrayList(Tag).init(allocator),
+            .allocator = allocator,
         };
     }
 
     fn newTag(self: *Svg, name: []const u8, id: usize) !*Tag {
-        const ptr = try self.tags.addOne();
-        ptr.name = name;
-        ptr.id = id;
-        ptr.attr = AttrMap.init(self.arena.allocator());
-        ptr.style = AttrMap.init(self.arena.allocator());
-        ptr.path = std.ArrayList(u8).init(self.arena.allocator());
+        const ptr = try self.tags.addOne(self.allocator);
+        ptr.* = .{
+            .attr = AttrMap.init(self.arena.allocator()),
+            .name = name,
+            .id = id,
+            .style = AttrMap.init(self.arena.allocator()),
+            .path = .empty,
+        };
         return ptr;
     }
 
     pub fn deinit(self: *Svg) void {
-        self.tags.deinit();
+        self.tags.deinit(self.allocator);
         self.arena.deinit();
         self.* = undefined;
     }
@@ -207,13 +212,13 @@ pub const Svg = struct {
         class: ?[]const u8 = null,
     };
 
-    pub fn write(self: *const Svg, writer: anytype, opts: WriteOptions) !void {
+    pub fn write(self: *const Svg, writer: *std.Io.Writer, opts: WriteOptions) !void {
         try self.writeHeader(writer, opts.class, opts.full_header);
         try writer.writeByte('\n');
 
         const indent: usize = 1;
         if (opts.svg_content) |content| {
-            try writer.writeByteNTimes(' ', indent * 2);
+            try writer.splatByteAll(' ', indent * 2);
             try writer.print(
                 "<desc>{s}</desc>\n",
                 .{std.mem.trim(u8, content, "\n\t ")},
@@ -221,7 +226,7 @@ pub const Svg = struct {
         }
 
         for (self.tags.items) |tag| {
-            try writer.writeByteNTimes(' ', indent * 2);
+            try writer.splatByteAll(' ', indent * 2);
             try tag.write(writer);
             try writer.writeByte('\n');
         }

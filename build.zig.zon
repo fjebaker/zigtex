@@ -5,7 +5,7 @@
     .dependencies = .{
         .microtex = .{
             .url = "https://github.com/fjebaker/MicroTeX/archive/openmath.tar.gz",
-            .hash = "N-V-__8AAKtzyQAE9SdYFrG_wy4uQPdZp1McRWsdddHbOmgD",
+            .hash = "N-V-__8AADt0yQCpAsFGWBTOCyfdUkjnlLJF_V-FBo08cjK0",
         },
     },
     .paths = .{

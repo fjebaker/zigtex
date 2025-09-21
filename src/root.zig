@@ -112,13 +112,14 @@ pub const TexSvgRender = struct {
                 },
             }
         }
-        var buf = std.ArrayList(u8).init(allocator);
-        defer buf.deinit();
-        try s.write(buf.writer(), .{
+        var buf = std.ArrayList(u8).empty;
+        defer buf.deinit(allocator);
+        var buf_writer = buf.writer(allocator).adaptToNewApi(&.{});
+        try s.write(&buf_writer.new_interface, .{
             .full_header = opts.full_header,
             .svg_content = tex,
             .class = opts.class,
         });
-        return buf.toOwnedSlice();
+        return buf.toOwnedSlice(allocator);
     }
 };

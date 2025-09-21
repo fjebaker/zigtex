@@ -1,5 +1,9 @@
 const std = @import("std");
-const c = @import("c.zig");
+pub const c = @cImport({
+    @cDefine("HAVE_CWRAPPER", "");
+    @cInclude("stdbool.h");
+    @cInclude("wrapper/cwrapper.h");
+});
 
 pub const FontDescription = struct {
     f: *c.FontDesc,
@@ -58,41 +62,41 @@ pub const MicroTeX = struct {
             fn createTextLayout(
                 text: [*c]const u8,
                 f: [*c]c.FontDesc,
-            ) callconv(.C) c_uint {
+            ) callconv(.c) c_uint {
                 const slice = std.mem.span(text);
                 const id: usize =
                     Ctx.createTextLayout(
-                    @alignCast(@ptrCast(ctx)),
-                    slice,
-                    FontDescription{ .f = f },
-                ) catch |err| {
-                    std.log.default.err("createTextLayout: {!}", .{err});
-                    return 0;
-                };
+                        @ptrCast(@alignCast(ctx)),
+                        slice,
+                        FontDescription{ .f = f },
+                    ) catch |err| {
+                        std.log.default.err("createTextLayout: {t}", .{err});
+                        return 0;
+                    };
                 return @intCast(id);
             }
             fn getTextLayoutBounds(
                 id: c_uint,
                 b: [*c]c.TextLayoutBounds,
-            ) callconv(.C) void {
+            ) callconv(.c) void {
                 Ctx.getTextLayoutBounds(
-                    @alignCast(@ptrCast(ctx)),
+                    @ptrCast(@alignCast(ctx)),
                     @as(usize, @intCast(id)),
                     TextLayoutBounds{ .b = b },
                 ) catch |err| {
-                    std.log.default.err("getTextlayoutBounds: {!}", .{err});
+                    std.log.default.err("getTextlayoutBounds: {t}", .{err});
                     return 0;
                 };
             }
-            fn releaseTextLayout(id: c_uint) callconv(.C) void {
+            fn releaseTextLayout(id: c_uint) callconv(.c) void {
                 Ctx.releaseTextLayout(
-                    @alignCast(@ptrCast(ctx)),
+                    @ptrCast(@alignCast(ctx)),
                     @as(usize, @intCast(id)),
                 );
             }
-            fn isPathExists(id: c_uint) callconv(.C) bool {
+            fn isPathExists(id: c_uint) callconv(.c) bool {
                 return Ctx.isPathExists(
-                    @alignCast(@ptrCast(ctx)),
+                    @ptrCast(@alignCast(ctx)),
                     @as(usize, @intCast(id)),
                 );
             }
@@ -163,7 +167,7 @@ fn getRawDrawingData(
     offset: usize,
     size: usize,
 ) []const u8 {
-    const ptr: [*]const u8 = @alignCast(@ptrCast(data.?));
+    const ptr: [*]const u8 = @ptrCast(@alignCast(data.?));
     return ptr[offset .. offset + size];
 }
 
